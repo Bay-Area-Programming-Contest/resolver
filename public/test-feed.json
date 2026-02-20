@@ -1,0 +1,905 @@
+{
+    "type": "contest",
+    "id": null,
+    "data": {
+        "id": "test2025",
+        "name": "Test Programming Contest 2025",
+        "formal_name": "Test Programming Contest 2025",
+        "start_time": "2025-01-15T10:00:00+00",
+        "duration": "5:00:00",
+        "scoreboard_freeze_duration": "1:00:00",
+        "scoreboard_type": "pass-fail",
+        "penalty_time": 20
+    }
+}
+{
+    "type": "judgement-types",
+    "id": null,
+    "data": [
+        {
+            "id": "AC",
+            "name": "Accepted",
+            "penalty": false,
+            "solved": true
+        },
+        {
+            "id": "WA",
+            "name": "Wrong Answer",
+            "penalty": true,
+            "solved": false
+        },
+        {
+            "id": "TLE",
+            "name": "Time Limit Exceeded",
+            "penalty": true,
+            "solved": false
+        },
+        {
+            "id": "CE",
+            "name": "Compiler Error",
+            "penalty": false,
+            "solved": false
+        },
+        {
+            "id": "RTE",
+            "name": "Runtime Error",
+            "penalty": true,
+            "solved": false
+        }
+    ]
+}
+{
+    "type": "problems",
+    "id": null,
+    "data": [
+        {
+            "id": "p1",
+            "label": "A",
+            "name": "Apple Counting",
+            "ordinal": 1,
+            "color": "red",
+            "rgb": "#e74c3c",
+            "time_limit": 2,
+            "test_data_count": 10
+        },
+        {
+            "id": "p2",
+            "label": "B",
+            "name": "Binary Search",
+            "ordinal": 2,
+            "color": "blue",
+            "rgb": "#3498db",
+            "time_limit": 3,
+            "test_data_count": 15
+        },
+        {
+            "id": "p3",
+            "label": "C",
+            "name": "Cake Division",
+            "ordinal": 3,
+            "color": "green",
+            "rgb": "#2ecc71",
+            "time_limit": 2,
+            "test_data_count": 8
+        },
+        {
+            "id": "p4",
+            "label": "D",
+            "name": "Dynamic Graph",
+            "ordinal": 4,
+            "color": "orange",
+            "rgb": "#e67e22",
+            "time_limit": 5,
+            "test_data_count": 20
+        },
+        {
+            "id": "p5",
+            "label": "E",
+            "name": "Euler Path",
+            "ordinal": 5,
+            "color": "purple",
+            "rgb": "#9b59b6",
+            "time_limit": 4,
+            "test_data_count": 12
+        },
+        {
+            "id": "p6",
+            "label": "F",
+            "name": "Fibonacci Prime",
+            "ordinal": 6,
+            "color": "yellow",
+            "rgb": "#f1c40f",
+            "time_limit": 1,
+            "test_data_count": 5
+        }
+    ]
+}
+{
+    "type": "organizations",
+    "id": "org1",
+    "data": {
+        "id": "org1",
+        "name": "MIT",
+        "formal_name": "Massachusetts Institute of Technology",
+        "country": "USA"
+    }
+}
+{
+    "type": "organizations",
+    "id": "org2",
+    "data": {
+        "id": "org2",
+        "name": "Stanford",
+        "formal_name": "Stanford University",
+        "country": "USA"
+    }
+}
+{
+    "type": "organizations",
+    "id": "org3",
+    "data": {
+        "id": "org3",
+        "name": "CMU",
+        "formal_name": "Carnegie Mellon University",
+        "country": "USA"
+    }
+}
+{
+    "type": "organizations",
+    "id": "org4",
+    "data": {
+        "id": "org4",
+        "name": "Peking U",
+        "formal_name": "Peking University",
+        "country": "CHN"
+    }
+}
+{
+    "type": "organizations",
+    "id": "org5",
+    "data": {
+        "id": "org5",
+        "name": "ETH Zurich",
+        "formal_name": "ETH Zurich",
+        "country": "CHE"
+    }
+}
+{
+    "type": "organizations",
+    "id": "org6",
+    "data": {
+        "id": "org6",
+        "name": "U Tokyo",
+        "formal_name": "University of Tokyo",
+        "country": "JPN"
+    }
+}
+{
+    "type": "organizations",
+    "id": "org7",
+    "data": {
+        "id": "org7",
+        "name": "Oxford",
+        "formal_name": "University of Oxford",
+        "country": "GBR"
+    }
+}
+{
+    "type": "organizations",
+    "id": "org8",
+    "data": {
+        "id": "org8",
+        "name": "Waterloo",
+        "formal_name": "University of Waterloo",
+        "country": "CAN"
+    }
+}
+{
+    "type": "teams",
+    "id": "t1",
+    "data": {
+        "id": "t1",
+        "name": "Code Crushers",
+        "organization_id": "org1"
+    }
+}
+{
+    "type": "teams",
+    "id": "t2",
+    "data": {
+        "id": "t2",
+        "name": "Binary Beasts",
+        "organization_id": "org2"
+    }
+}
+{
+    "type": "teams",
+    "id": "t3",
+    "data": {
+        "id": "t3",
+        "name": "Algorithm Aces",
+        "organization_id": "org3"
+    }
+}
+{
+    "type": "teams",
+    "id": "t4",
+    "data": {
+        "id": "t4",
+        "name": "Dragon Coders",
+        "organization_id": "org4"
+    }
+}
+{
+    "type": "teams",
+    "id": "t5",
+    "data": {
+        "id": "t5",
+        "name": "Swiss Precision",
+        "organization_id": "org5"
+    }
+}
+{
+    "type": "teams",
+    "id": "t6",
+    "data": {
+        "id": "t6",
+        "name": "Tokyo Hackers",
+        "organization_id": "org6"
+    }
+}
+{
+    "type": "teams",
+    "id": "t7",
+    "data": {
+        "id": "t7",
+        "name": "Oxford Logicians",
+        "organization_id": "org7"
+    }
+}
+{
+    "type": "teams",
+    "id": "t8",
+    "data": {
+        "id": "t8",
+        "name": "Maple Coders",
+        "organization_id": "org8"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s1",
+    "data": {
+        "id": "s1",
+        "team_id": "t1",
+        "problem_id": "p1",
+        "language_id": "cpp",
+        "time": "2025-01-15T10:15:00+00",
+        "contest_time": "0:15:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j1",
+    "data": {
+        "id": "j1",
+        "submission_id": "s1",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T10:15:30+00",
+        "start_contest_time": "0:15:30",
+        "end_time": "2025-01-15T10:15:35+00",
+        "end_contest_time": "0:15:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s2",
+    "data": {
+        "id": "s2",
+        "team_id": "t1",
+        "problem_id": "p2",
+        "language_id": "cpp",
+        "time": "2025-01-15T10:30:00+00",
+        "contest_time": "0:30:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j2",
+    "data": {
+        "id": "j2",
+        "submission_id": "s2",
+        "judgement_type_id": "WA",
+        "start_time": "2025-01-15T10:30:30+00",
+        "start_contest_time": "0:30:30",
+        "end_time": "2025-01-15T10:30:35+00",
+        "end_contest_time": "0:30:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s3",
+    "data": {
+        "id": "s3",
+        "team_id": "t1",
+        "problem_id": "p2",
+        "language_id": "cpp",
+        "time": "2025-01-15T10:45:00+00",
+        "contest_time": "0:45:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j3",
+    "data": {
+        "id": "j3",
+        "submission_id": "s3",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T10:45:30+00",
+        "start_contest_time": "0:45:30",
+        "end_time": "2025-01-15T10:45:35+00",
+        "end_contest_time": "0:45:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s4",
+    "data": {
+        "id": "s4",
+        "team_id": "t2",
+        "problem_id": "p1",
+        "language_id": "cpp",
+        "time": "2025-01-15T10:20:00+00",
+        "contest_time": "0:20:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j4",
+    "data": {
+        "id": "j4",
+        "submission_id": "s4",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T10:20:30+00",
+        "start_contest_time": "0:20:30",
+        "end_time": "2025-01-15T10:20:35+00",
+        "end_contest_time": "0:20:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s5",
+    "data": {
+        "id": "s5",
+        "team_id": "t2",
+        "problem_id": "p3",
+        "language_id": "cpp",
+        "time": "2025-01-15T11:00:00+00",
+        "contest_time": "1:00:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j5",
+    "data": {
+        "id": "j5",
+        "submission_id": "s5",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T11:00:30+00",
+        "start_contest_time": "1:00:30",
+        "end_time": "2025-01-15T11:00:35+00",
+        "end_contest_time": "1:00:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s6",
+    "data": {
+        "id": "s6",
+        "team_id": "t3",
+        "problem_id": "p1",
+        "language_id": "cpp",
+        "time": "2025-01-15T10:25:00+00",
+        "contest_time": "0:25:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j6",
+    "data": {
+        "id": "j6",
+        "submission_id": "s6",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T10:25:30+00",
+        "start_contest_time": "0:25:30",
+        "end_time": "2025-01-15T10:25:35+00",
+        "end_contest_time": "0:25:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s7",
+    "data": {
+        "id": "s7",
+        "team_id": "t3",
+        "problem_id": "p2",
+        "language_id": "cpp",
+        "time": "2025-01-15T11:30:00+00",
+        "contest_time": "1:30:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j7",
+    "data": {
+        "id": "j7",
+        "submission_id": "s7",
+        "judgement_type_id": "WA",
+        "start_time": "2025-01-15T11:30:30+00",
+        "start_contest_time": "1:30:30",
+        "end_time": "2025-01-15T11:30:35+00",
+        "end_contest_time": "1:30:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s8",
+    "data": {
+        "id": "s8",
+        "team_id": "t4",
+        "problem_id": "p1",
+        "language_id": "cpp",
+        "time": "2025-01-15T10:10:00+00",
+        "contest_time": "0:10:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j8",
+    "data": {
+        "id": "j8",
+        "submission_id": "s8",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T10:10:30+00",
+        "start_contest_time": "0:10:30",
+        "end_time": "2025-01-15T10:10:35+00",
+        "end_contest_time": "0:10:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s9",
+    "data": {
+        "id": "s9",
+        "team_id": "t4",
+        "problem_id": "p2",
+        "language_id": "cpp",
+        "time": "2025-01-15T10:40:00+00",
+        "contest_time": "0:40:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j9",
+    "data": {
+        "id": "j9",
+        "submission_id": "s9",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T10:40:30+00",
+        "start_contest_time": "0:40:30",
+        "end_time": "2025-01-15T10:40:35+00",
+        "end_contest_time": "0:40:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s10",
+    "data": {
+        "id": "s10",
+        "team_id": "t4",
+        "problem_id": "p3",
+        "language_id": "cpp",
+        "time": "2025-01-15T11:20:00+00",
+        "contest_time": "1:20:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j10",
+    "data": {
+        "id": "j10",
+        "submission_id": "s10",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T11:20:30+00",
+        "start_contest_time": "1:20:30",
+        "end_time": "2025-01-15T11:20:35+00",
+        "end_contest_time": "1:20:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s11",
+    "data": {
+        "id": "s11",
+        "team_id": "t5",
+        "problem_id": "p1",
+        "language_id": "cpp",
+        "time": "2025-01-15T10:30:00+00",
+        "contest_time": "0:30:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j11",
+    "data": {
+        "id": "j11",
+        "submission_id": "s11",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T10:30:30+00",
+        "start_contest_time": "0:30:30",
+        "end_time": "2025-01-15T10:30:35+00",
+        "end_contest_time": "0:30:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s12",
+    "data": {
+        "id": "s12",
+        "team_id": "t6",
+        "problem_id": "p2",
+        "language_id": "cpp",
+        "time": "2025-01-15T10:35:00+00",
+        "contest_time": "0:35:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j12",
+    "data": {
+        "id": "j12",
+        "submission_id": "s12",
+        "judgement_type_id": "WA",
+        "start_time": "2025-01-15T10:35:30+00",
+        "start_contest_time": "0:35:30",
+        "end_time": "2025-01-15T10:35:35+00",
+        "end_contest_time": "0:35:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s13",
+    "data": {
+        "id": "s13",
+        "team_id": "t6",
+        "problem_id": "p2",
+        "language_id": "cpp",
+        "time": "2025-01-15T11:10:00+00",
+        "contest_time": "1:10:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j13",
+    "data": {
+        "id": "j13",
+        "submission_id": "s13",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T11:10:30+00",
+        "start_contest_time": "1:10:30",
+        "end_time": "2025-01-15T11:10:35+00",
+        "end_contest_time": "1:10:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s14",
+    "data": {
+        "id": "s14",
+        "team_id": "t7",
+        "problem_id": "p3",
+        "language_id": "cpp",
+        "time": "2025-01-15T10:50:00+00",
+        "contest_time": "0:50:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j14",
+    "data": {
+        "id": "j14",
+        "submission_id": "s14",
+        "judgement_type_id": "WA",
+        "start_time": "2025-01-15T10:50:30+00",
+        "start_contest_time": "0:50:30",
+        "end_time": "2025-01-15T10:50:35+00",
+        "end_contest_time": "0:50:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s15",
+    "data": {
+        "id": "s15",
+        "team_id": "t8",
+        "problem_id": "p1",
+        "language_id": "cpp",
+        "time": "2025-01-15T11:00:00+00",
+        "contest_time": "1:00:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j15",
+    "data": {
+        "id": "j15",
+        "submission_id": "s15",
+        "judgement_type_id": "WA",
+        "start_time": "2025-01-15T11:00:30+00",
+        "start_contest_time": "1:00:30",
+        "end_time": "2025-01-15T11:00:35+00",
+        "end_contest_time": "1:00:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s20",
+    "data": {
+        "id": "s20",
+        "team_id": "t1",
+        "problem_id": "p3",
+        "language_id": "cpp",
+        "time": "2025-01-15T14:10:00+00",
+        "contest_time": "4:10:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j20",
+    "data": {
+        "id": "j20",
+        "submission_id": "s20",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T14:10:30+00",
+        "start_contest_time": "4:10:30",
+        "end_time": "2025-01-15T14:10:35+00",
+        "end_contest_time": "4:10:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s21",
+    "data": {
+        "id": "s21",
+        "team_id": "t2",
+        "problem_id": "p4",
+        "language_id": "cpp",
+        "time": "2025-01-15T14:20:00+00",
+        "contest_time": "4:20:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j21",
+    "data": {
+        "id": "j21",
+        "submission_id": "s21",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T14:20:30+00",
+        "start_contest_time": "4:20:30",
+        "end_time": "2025-01-15T14:20:35+00",
+        "end_contest_time": "4:20:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s22",
+    "data": {
+        "id": "s22",
+        "team_id": "t3",
+        "problem_id": "p2",
+        "language_id": "cpp",
+        "time": "2025-01-15T14:15:00+00",
+        "contest_time": "4:15:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j22",
+    "data": {
+        "id": "j22",
+        "submission_id": "s22",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T14:15:30+00",
+        "start_contest_time": "4:15:30",
+        "end_time": "2025-01-15T14:15:35+00",
+        "end_contest_time": "4:15:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s23",
+    "data": {
+        "id": "s23",
+        "team_id": "t3",
+        "problem_id": "p3",
+        "language_id": "cpp",
+        "time": "2025-01-15T14:30:00+00",
+        "contest_time": "4:30:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j23",
+    "data": {
+        "id": "j23",
+        "submission_id": "s23",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T14:30:30+00",
+        "start_contest_time": "4:30:30",
+        "end_time": "2025-01-15T14:30:35+00",
+        "end_contest_time": "4:30:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s24",
+    "data": {
+        "id": "s24",
+        "team_id": "t5",
+        "problem_id": "p2",
+        "language_id": "cpp",
+        "time": "2025-01-15T14:25:00+00",
+        "contest_time": "4:25:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j24",
+    "data": {
+        "id": "j24",
+        "submission_id": "s24",
+        "judgement_type_id": "WA",
+        "start_time": "2025-01-15T14:25:30+00",
+        "start_contest_time": "4:25:30",
+        "end_time": "2025-01-15T14:25:35+00",
+        "end_contest_time": "4:25:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s25",
+    "data": {
+        "id": "s25",
+        "team_id": "t5",
+        "problem_id": "p3",
+        "language_id": "cpp",
+        "time": "2025-01-15T14:40:00+00",
+        "contest_time": "4:40:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j25",
+    "data": {
+        "id": "j25",
+        "submission_id": "s25",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T14:40:30+00",
+        "start_contest_time": "4:40:30",
+        "end_time": "2025-01-15T14:40:35+00",
+        "end_contest_time": "4:40:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s26",
+    "data": {
+        "id": "s26",
+        "team_id": "t6",
+        "problem_id": "p1",
+        "language_id": "cpp",
+        "time": "2025-01-15T14:05:00+00",
+        "contest_time": "4:05:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j26",
+    "data": {
+        "id": "j26",
+        "submission_id": "s26",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T14:05:30+00",
+        "start_contest_time": "4:05:30",
+        "end_time": "2025-01-15T14:05:35+00",
+        "end_contest_time": "4:05:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s27",
+    "data": {
+        "id": "s27",
+        "team_id": "t7",
+        "problem_id": "p1",
+        "language_id": "cpp",
+        "time": "2025-01-15T14:35:00+00",
+        "contest_time": "4:35:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j27",
+    "data": {
+        "id": "j27",
+        "submission_id": "s27",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T14:35:30+00",
+        "start_contest_time": "4:35:30",
+        "end_time": "2025-01-15T14:35:35+00",
+        "end_contest_time": "4:35:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s28",
+    "data": {
+        "id": "s28",
+        "team_id": "t8",
+        "problem_id": "p1",
+        "language_id": "cpp",
+        "time": "2025-01-15T14:45:00+00",
+        "contest_time": "4:45:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j28",
+    "data": {
+        "id": "j28",
+        "submission_id": "s28",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T14:45:30+00",
+        "start_contest_time": "4:45:30",
+        "end_time": "2025-01-15T14:45:35+00",
+        "end_contest_time": "4:45:35"
+    }
+}
+{
+    "type": "submissions",
+    "id": "s29",
+    "data": {
+        "id": "s29",
+        "team_id": "t4",
+        "problem_id": "p4",
+        "language_id": "cpp",
+        "time": "2025-01-15T14:50:00+00",
+        "contest_time": "4:50:00"
+    }
+}
+{
+    "type": "judgements",
+    "id": "j29",
+    "data": {
+        "id": "j29",
+        "submission_id": "s29",
+        "judgement_type_id": "AC",
+        "start_time": "2025-01-15T14:50:30+00",
+        "start_contest_time": "4:50:30",
+        "end_time": "2025-01-15T14:50:35+00",
+        "end_contest_time": "4:50:35"
+    }
+}
+{
+    "type": "state",
+    "id": null,
+    "data": {
+        "started": "2025-01-15T10:00:00+00",
+        "ended": "2025-01-15T15:00:00+00",
+        "frozen": "2025-01-15T14:00:00+00",
+        "thawed": null,
+        "finalized": "2025-01-15T15:10:00+00",
+        "end_of_updates": "2025-01-15T15:15:00+00"
+    }
+}
