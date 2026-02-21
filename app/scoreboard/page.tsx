@@ -8,7 +8,6 @@ import ScoreboardHeader from './ScoreboardHeader';
 import ScoreboardRow from './ScoreboardRow';
 
 const FALLBACK_ROW_HEIGHT = 48; // used only before DOM measurement
-const HEADER_HEIGHT = 56;
 const SCROLL_DURATION = 400; // ms for viewport scrolling
 
 export default function ScoreboardPage() {
@@ -46,6 +45,7 @@ export default function ScoreboardPage() {
     const autoplayTimer = useRef<NodeJS.Timeout | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const bodyRef = useRef<HTMLDivElement>(null);
+    const viewportRef = useRef<HTMLDivElement>(null);
     const skipAnimRef = useRef(false);
     const animatingStepRef = useRef(-1);
 
@@ -83,22 +83,50 @@ export default function ScoreboardPage() {
         return () => clearTimeout(timer);
     }, [displayStandings]);
 
-    // Compute visible count from window height
-    const visibleCount = useMemo(() => {
-        const h = typeof window !== 'undefined' ? window.innerHeight - HEADER_HEIGHT : 800;
-        return Math.floor(h / rowHeight);
-    }, [rowHeight]);
+    // Dynamically measured viewport height
+    const [measuredViewportHeight, setMeasuredViewportHeight] = useState(800);
 
-    // Compute the ideal scroll target (pixel offset) for a given focused team
+    // Measure viewport height from DOM
+    useEffect(() => {
+        const measure = () => {
+            if (viewportRef.current) {
+                const h = viewportRef.current.clientHeight;
+                if (h > 0) setMeasuredViewportHeight(h);
+            }
+        };
+        measure();
+        window.addEventListener('resize', measure);
+        return () => window.removeEventListener('resize', measure);
+    }, []);
+
+    // Compute visible count from measured viewport height
+    const visibleCount = useMemo(() => {
+        return Math.floor(measuredViewportHeight / rowHeight);
+    }, [rowHeight, measuredViewportHeight]);
+
+    // Compute the ideal scroll target (pixel offset) for a given focused team.
+    // Positions focused team so there's 1 row visible below it when possible.
     const computeScrollTarget = useCallback((standings: TeamStanding[], focused: string | null) => {
         if (!focused) return 0;
         const focusIdx = standings.findIndex((s) => s.teamId === focused);
         if (focusIdx < 0) return 0;
-        const targetPosition = visibleCount - 2; // show focus near bottom
-        let startIdx = Math.max(0, focusIdx - targetPosition);
-        startIdx = Math.min(startIdx, Math.max(0, standings.length - visibleCount));
-        return startIdx * rowHeight;
-    }, [visibleCount, rowHeight]);
+
+        // We want the focused team at visibleCount - 2 from top
+        // (i.e., 1 row below it visible)
+        const targetPosition = Math.max(0, visibleCount - 2);
+        let scrollTarget = (focusIdx - targetPosition) * rowHeight;
+
+        // Don't scroll past the bottom of the list.
+        // Use actual DOM content height when available to avoid subpixel drift.
+        const contentHeight = bodyRef.current?.scrollHeight ?? standings.length * rowHeight;
+        const maxScroll = Math.max(0, contentHeight - measuredViewportHeight);
+        scrollTarget = Math.min(scrollTarget, maxScroll);
+
+        // Don't scroll above the top
+        scrollTarget = Math.max(0, scrollTarget);
+
+        return scrollTarget;
+    }, [visibleCount, rowHeight, measuredViewportHeight]);
 
     // Initialize display standings from current step (handles resume after exit)
     useEffect(() => {
@@ -460,8 +488,6 @@ export default function ScoreboardPage() {
         ? `Finished — ${steps.length} steps`
         : `Step ${Math.max(0, currentStep + 1)} / ${steps.length}`;
 
-    // Viewport height for the overflow container
-    const viewportHeight = visibleCount * rowHeight;
 
     return (
         <div className="scoreboard-page" onClick={handleClick} ref={containerRef}>
@@ -483,8 +509,8 @@ export default function ScoreboardPage() {
             <div className="scoreboard-container">
                 <ScoreboardHeader problems={contestData.problems} />
                 <div
+                    ref={viewportRef}
                     className="scoreboard-viewport"
-                    style={{ height: viewportHeight, overflow: 'hidden' }}
                 >
                     <div
                         ref={bodyRef}
