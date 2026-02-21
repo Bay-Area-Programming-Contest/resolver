@@ -26,6 +26,7 @@ export default function ScoreboardPage() {
     const [displayStandings, setDisplayStandings] = useState<TeamStanding[]>([]);
     const [movingTeamId, setMovingTeamId] = useState<string | null>(null);
     const [moveOffset, setMoveOffset] = useState(0);
+    const [isFinished, setIsFinished] = useState(false);
     const autoplayTimer = useRef<NodeJS.Timeout | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -36,12 +37,22 @@ export default function ScoreboardPage() {
         }
     }, [isReady, contestData, router]);
 
-    // Initialize display standings
+    // Initialize display standings from current step (handles resume after exit)
     useEffect(() => {
         if (frozenStandings.length > 0 && displayStandings.length === 0) {
-            setDisplayStandings(frozenStandings);
+            if (currentStep >= 0 && currentStep < steps.length) {
+                // Resuming — restore state from current step
+                setDisplayStandings(steps[currentStep].standings);
+                setFocusedTeamId(steps[currentStep].teamId);
+            } else if (currentStep >= steps.length && steps.length > 0) {
+                // Was finished — show final standings
+                setDisplayStandings(steps[steps.length - 1].standings);
+                setIsFinished(true);
+            } else {
+                setDisplayStandings(frozenStandings);
+            }
         }
-    }, [frozenStandings, displayStandings.length]);
+    }, [frozenStandings, displayStandings.length, currentStep, steps]);
 
     // Get current standings based on step
     const getCurrentStandings = useCallback(
@@ -69,6 +80,7 @@ export default function ScoreboardPage() {
 
             const step = steps[stepIdx];
             setIsAnimating(true);
+            setIsFinished(false);
 
             if (step.type === 'focus') {
                 // Focus step: highlight the team
@@ -89,19 +101,25 @@ export default function ScoreboardPage() {
                 setIsAnimating(false);
             } else if (step.type === 'move') {
                 // Move step: animate the team moving up
+                //
+                // Strategy:
+                // 1. Update standings to new order immediately
+                // 2. Apply a positive translateY offset to push the team
+                //    back to its OLD visual position
+                // 3. Animate the offset to 0 so the team slides to its new spot
+                const rowsToMove = (step.fromRank ?? 0) - (step.toRank ?? 0);
+
                 setFocusedTeamId(step.teamId);
                 setMovingTeamId(step.teamId);
+                setDisplayStandings(step.standings); // New order
+                setMoveOffset(rowsToMove); // Offset back to old visual position
 
-                // Calculate rows to move
-                const rowsToMove = (step.fromRank ?? 0) - (step.toRank ?? 0);
-                setMoveOffset(-rowsToMove);
-
-                await new Promise((r) => setTimeout(r, 50)); // Let CSS pick up the state
+                // Wait a frame for React to render with the offset
+                await new Promise((r) => setTimeout(r, 50));
                 setMoveOffset(0); // Animate to final position
 
                 await new Promise((r) => setTimeout(r, config.movementSpeed));
 
-                setDisplayStandings(step.standings);
                 setMovingTeamId(null);
                 setMoveOffset(0);
                 setCurrentStep(stepIdx);
@@ -117,12 +135,32 @@ export default function ScoreboardPage() {
         const nextStep = currentStep + 1;
         if (nextStep < steps.length) {
             animateStepForward(nextStep);
+        } else if (nextStep === steps.length && !isFinished) {
+            // Show final resolved scoreboard
+            if (steps.length > 0) {
+                setDisplayStandings(steps[steps.length - 1].standings);
+            }
+            setFocusedTeamId(null);
+            setRevealingProblemId(null);
+            setIsFinished(true);
+            setCurrentStep(steps.length);
         }
-    }, [currentStep, steps.length, isAnimating, animateStepForward]);
+    }, [currentStep, steps, isAnimating, isFinished, animateStepForward, setCurrentStep]);
 
     // Step backward
     const stepBackward = useCallback(() => {
         if (isAnimating) return;
+        if (isFinished) {
+            // Go back from finished state to last step
+            const lastStep = steps.length - 1;
+            if (lastStep >= 0) {
+                setDisplayStandings(steps[lastStep].standings);
+                setFocusedTeamId(steps[lastStep].teamId);
+                setCurrentStep(lastStep);
+            }
+            setIsFinished(false);
+            return;
+        }
         const prevStep = currentStep - 1;
         if (prevStep >= -1) {
             const standings = getCurrentStandings(prevStep);
@@ -132,13 +170,28 @@ export default function ScoreboardPage() {
             setRevealingProblemId(null);
             setMovingTeamId(null);
         }
-    }, [currentStep, isAnimating, getCurrentStandings, setCurrentStep, getFocusedTeamId]);
+    }, [currentStep, isAnimating, isFinished, steps, getCurrentStandings, setCurrentStep, getFocusedTeamId]);
 
     // Autoplay logic
     useEffect(() => {
         if (isPlaying && !isAnimating) {
             const nextStep = currentStep + 1;
-            if (nextStep >= steps.length) {
+
+            if (nextStep > steps.length) {
+                // Past the final state
+                setIsPlaying(false);
+                return;
+            }
+
+            if (nextStep === steps.length) {
+                // Advance to finished state
+                if (steps.length > 0) {
+                    setDisplayStandings(steps[steps.length - 1].standings);
+                }
+                setFocusedTeamId(null);
+                setRevealingProblemId(null);
+                setIsFinished(true);
+                setCurrentStep(steps.length);
                 setIsPlaying(false);
                 return;
             }
@@ -146,7 +199,6 @@ export default function ScoreboardPage() {
             // Check if we should pause at this rank
             const step = steps[nextStep];
             if (step.type === 'focus') {
-                // Find the rank of this team in current standings
                 const teamStanding = displayStandings.find(
                     (s) => s.teamId === step.teamId
                 );
@@ -176,6 +228,7 @@ export default function ScoreboardPage() {
         config.pauseAtRanks,
         config.autoplayPause,
         animateStepForward,
+        setCurrentStep,
     ]);
 
     // Keyboard controls
@@ -220,8 +273,7 @@ export default function ScoreboardPage() {
     }
 
     // Compute visible teams based on container height
-    // The focused team should be second from bottom
-    const rowHeight = 48; // Approximate row height in px
+    const rowHeight = 48;
     const headerHeight = 56;
     const containerHeight =
         typeof window !== 'undefined' ? window.innerHeight - headerHeight : 800;
@@ -235,10 +287,8 @@ export default function ScoreboardPage() {
     // Calculate viewport window
     let startIdx = 0;
     if (focusedIndex >= 0) {
-        // Focused team should be second from bottom
         const targetPosition = visibleCount - 2;
         startIdx = Math.max(0, focusedIndex - targetPosition);
-        // Make sure we don't go past the end
         startIdx = Math.min(startIdx, Math.max(0, displayStandings.length - visibleCount));
     }
 
@@ -253,6 +303,11 @@ export default function ScoreboardPage() {
         teamNames.set(team.id, team.display_name || team.name);
     }
 
+    // Status display
+    const stepDisplay = isFinished
+        ? `Finished — ${steps.length} steps`
+        : `Step ${Math.max(0, currentStep + 1)} / ${steps.length}`;
+
     return (
         <div className="scoreboard-page" onClick={handleClick} ref={containerRef}>
             {/* Contest title bar */}
@@ -260,13 +315,11 @@ export default function ScoreboardPage() {
                 <h1>{contestData.contest.formal_name || contestData.contest.name}</h1>
                 <div className="scoreboard-controls-info">
                     {isPlaying ? (
-                        <span className="status-badge playing">▶ Playing</span>
+                        <span className="status-badge playing">⏸ Playing</span>
                     ) : (
-                        <span className="status-badge paused">⏸ Paused</span>
+                        <span className="status-badge paused">▶ Paused</span>
                     )}
-                    <span className="step-counter">
-                        Step {Math.max(0, currentStep + 1)} / {steps.length}
-                    </span>
+                    <span className="step-counter">{stepDisplay}</span>
                 </div>
             </div>
 
@@ -277,8 +330,13 @@ export default function ScoreboardPage() {
                     {visibleStandings.map((standing, idx) => {
                         const globalIdx = startIdx + idx;
                         const isFocused = standing.teamId === focusedTeamId;
+                        // Only grey out teams below the focused team, and NOT during
+                        // a move animation (where positions are shifting)
                         const isGreyedOut =
-                            focusedIndex >= 0 && globalIdx > focusedIndex;
+                            !isFinished &&
+                            focusedIndex >= 0 &&
+                            globalIdx > focusedIndex &&
+                            !movingTeamId;
                         const isMoving = standing.teamId === movingTeamId;
 
                         const team = contestData.teams.find(
@@ -295,6 +353,7 @@ export default function ScoreboardPage() {
                                     ? `transform ${config.movementSpeed}ms ease-in-out`
                                     : 'none',
                                 zIndex: 10,
+                                position: 'relative',
                             }
                             : {};
 

@@ -1,18 +1,19 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useResolver } from './ResolverContext';
 import { DEFAULT_CONFIG } from '@/lib/types';
 
 export default function ConfigPage() {
   const router = useRouter();
-  const { config, setConfig, loadFeed, isReady, contestData, reset } = useResolver();
+  const { config, loadFeed, recomputeWithConfig, isReady, contestData, reset } = useResolver();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [feedLoaded, setFeedLoaded] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const [revealDuration, setRevealDuration] = useState(String(config.revealDuration));
   const [movementSpeed, setMovementSpeed] = useState(String(config.movementSpeed));
@@ -20,52 +21,72 @@ export default function ConfigPage() {
   const [startTime, setStartTime] = useState(config.startTime || '');
   const [pauseAtRanks, setPauseAtRanks] = useState(config.pauseAtRanks.join(', '));
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const buildConfig = useCallback(() => ({
+    revealDuration: parseInt(revealDuration) || DEFAULT_CONFIG.revealDuration,
+    movementSpeed: parseInt(movementSpeed) || DEFAULT_CONFIG.movementSpeed,
+    autoplayPause: parseInt(autoplayPause) || DEFAULT_CONFIG.autoplayPause,
+    startTime: startTime.trim() || null,
+    pauseAtRanks: pauseAtRanks
+      .split(',')
+      .map((s) => parseInt(s.trim()))
+      .filter((n) => !isNaN(n)),
+  }), [revealDuration, movementSpeed, autoplayPause, startTime, pauseAtRanks]);
+
+  const processFile = useCallback(async (file: File) => {
     setFileName(file.name);
     setError(null);
     setLoading(true);
+    setFeedLoaded(false);
 
     try {
       const text = await file.text();
-      const newConfig = {
-        revealDuration: parseInt(revealDuration) || DEFAULT_CONFIG.revealDuration,
-        movementSpeed: parseInt(movementSpeed) || DEFAULT_CONFIG.movementSpeed,
-        autoplayPause: parseInt(autoplayPause) || DEFAULT_CONFIG.autoplayPause,
-        startTime: startTime.trim() || null,
-        pauseAtRanks: pauseAtRanks
-          .split(',')
-          .map((s) => parseInt(s.trim()))
-          .filter((n) => !isNaN(n)),
-      };
-
+      const newConfig = buildConfig();
       try {
         loadFeed(text, newConfig);
         setFeedLoaded(true);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to parse feed');
       }
-      setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to read file');
+    } finally {
       setLoading(false);
     }
+  }, [buildConfig, loadFeed]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processFile(file);
   };
 
+  // Drag-and-drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    await processFile(file);
+  }, [processFile]);
+
   const handleStart = () => {
-    // Apply current config values
-    const newConfig = {
-      revealDuration: parseInt(revealDuration) || DEFAULT_CONFIG.revealDuration,
-      movementSpeed: parseInt(movementSpeed) || DEFAULT_CONFIG.movementSpeed,
-      autoplayPause: parseInt(autoplayPause) || DEFAULT_CONFIG.autoplayPause,
-      startTime: startTime.trim() || null,
-      pauseAtRanks: pauseAtRanks
-        .split(',')
-        .map((s) => parseInt(s.trim()))
-        .filter((n) => !isNaN(n)),
-    };
-    setConfig(newConfig);
+    const newConfig = buildConfig();
+    // Recompute steps with the latest config (in case user changed start time, etc.)
+    recomputeWithConfig(newConfig);
     router.push('/scoreboard');
   };
 
@@ -98,7 +119,13 @@ export default function ConfigPage() {
             <span className="section-icon">📁</span>
             Contest Data
           </h2>
-          <div className="file-upload-area">
+          <div
+            className={`file-upload-area${isDragOver ? ' drag-over' : ''}`}
+            onDragOver={handleDragOver}
+            onDragEnter={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
             <input
               ref={fileInputRef}
               type="file"
@@ -116,7 +143,7 @@ export default function ConfigPage() {
               ) : (
                 <>
                   <span className="file-icon">⬆</span>
-                  <span>Choose event feed file</span>
+                  <span>Choose or drop event feed file</span>
                   <span className="file-hint">CCS 2022-07 NDJSON format</span>
                 </>
               )}

@@ -137,10 +137,15 @@ body {
   color: var(--text-secondary);
 }
 
-.file-label:hover {
+.file-label:hover,
+.file-upload-area.drag-over .file-label {
   border-color: var(--accent-blue);
   background: rgba(74, 124, 255, 0.05);
   color: var(--text-primary);
+}
+
+.file-upload-area.drag-over .file-label {
+  background: rgba(74, 124, 255, 0.12);
 }
 
 .file-icon {
@@ -511,9 +516,10 @@ body {
 .row-score {
   width: 90px;
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 2px;
   flex-shrink: 0;
 }
 
@@ -522,12 +528,14 @@ body {
   font-weight: 700;
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
+  line-height: 1.2;
 }
 
 .score-penalty {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
+  line-height: 1.2;
 }
 
 /* Problem Cells */
@@ -603,24 +611,29 @@ body {
     background: linear-gradient(135deg, #2472a4, #3498db);
     transform: scale(1);
   }
+
   30% {
     transform: scale(1.15);
     box-shadow: 0 0 20px rgba(74, 124, 255, 0.6);
   }
+
   50% {
     background: #fff;
     transform: scale(1.1);
   }
+
   100% {
     transform: scale(1);
   }
 }
 
 @keyframes pendingPulse {
+
   0%,
   100% {
     opacity: 0.6;
   }
+
   50% {
     opacity: 1;
   }

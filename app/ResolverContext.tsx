@@ -12,11 +12,13 @@ interface ResolverState {
     frozenStandings: TeamStanding[];
     currentStep: number;
     isReady: boolean;
+    feedText: string | null; // Store raw feed for recomputation
 }
 
 interface ResolverContextType extends ResolverState {
     setConfig: (config: ResolverConfig) => void;
     loadFeed: (feedText: string, config: ResolverConfig) => void;
+    recomputeWithConfig: (config: ResolverConfig) => void;
     setCurrentStep: (step: number) => void;
     reset: () => void;
 }
@@ -31,6 +33,7 @@ export function ResolverProvider({ children }: { children: React.ReactNode }) {
         frozenStandings: [],
         currentStep: -1,
         isReady: false,
+        feedText: null,
     });
 
     const setConfig = useCallback((config: ResolverConfig) => {
@@ -38,12 +41,25 @@ export function ResolverProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const loadFeed = useCallback((feedText: string, config: ResolverConfig) => {
+        const contestData = parseFeed(feedText);
+        const { frozenStandings, steps } = computeResolverSteps(contestData, config);
+        setState((prev) => ({
+            ...prev,
+            config,
+            contestData,
+            feedText,
+            frozenStandings,
+            steps,
+            currentStep: -1,
+            isReady: true,
+        }));
+    }, []);
+
+    const recomputeWithConfig = useCallback((config: ResolverConfig) => {
         setState((prev) => {
-            const contestData = parseFeed(feedText);
-            const { frozenStandings, steps } = computeResolverSteps(
-                contestData,
-                config
-            );
+            if (!prev.feedText || !prev.contestData) return prev;
+            const contestData = parseFeed(prev.feedText);
+            const { frozenStandings, steps } = computeResolverSteps(contestData, config);
             return {
                 ...prev,
                 config,
@@ -68,6 +84,7 @@ export function ResolverProvider({ children }: { children: React.ReactNode }) {
             frozenStandings: [],
             currentStep: -1,
             isReady: false,
+            feedText: null,
         });
     }, []);
 
@@ -77,6 +94,7 @@ export function ResolverProvider({ children }: { children: React.ReactNode }) {
                 ...state,
                 setConfig,
                 loadFeed,
+                recomputeWithConfig,
                 setCurrentStep,
                 reset,
             }}
