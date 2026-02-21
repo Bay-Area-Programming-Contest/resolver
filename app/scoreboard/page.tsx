@@ -30,6 +30,11 @@ export default function ScoreboardPage() {
     const autoplayTimer = useRef<NodeJS.Timeout | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
+    // Ref used to signal an animation should be skipped
+    const skipAnimRef = useRef(false);
+    // Ref tracking which step is currently animating
+    const animatingStepRef = useRef(-1);
+
     // Redirect if no data
     useEffect(() => {
         if (!isReady || !contestData) {
@@ -73,6 +78,44 @@ export default function ScoreboardPage() {
         [steps]
     );
 
+    // Helper: interruptible delay — resolves immediately if skipAnimRef is set
+    const interruptibleDelay = useCallback((ms: number) => {
+        return new Promise<void>((resolve) => {
+            if (skipAnimRef.current) {
+                resolve();
+                return;
+            }
+            const timer = setTimeout(resolve, ms);
+            const interval = setInterval(() => {
+                if (skipAnimRef.current) {
+                    clearTimeout(timer);
+                    clearInterval(interval);
+                    resolve();
+                }
+            }, 16); // check ~every frame
+            // Clean up interval when timer fires naturally
+            const origResolve = resolve;
+            void origResolve;
+        });
+    }, []);
+
+    // Apply step result instantly (used for skip and step backward)
+    const applyStepInstant = useCallback((stepIdx: number) => {
+        if (stepIdx < 0) {
+            setDisplayStandings(frozenStandings);
+            setFocusedTeamId(null);
+        } else if (stepIdx < steps.length) {
+            setDisplayStandings(steps[stepIdx].standings);
+            setFocusedTeamId(steps[stepIdx].teamId);
+        } else if (steps.length > 0) {
+            setDisplayStandings(steps[steps.length - 1].standings);
+            setFocusedTeamId(null);
+        }
+        setRevealingProblemId(null);
+        setMovingTeamId(null);
+        setMoveOffset(0);
+    }, [frozenStandings, steps]);
+
     // Animate a step forward
     const animateStepForward = useCallback(
         async (stepIdx: number) => {
@@ -81,6 +124,8 @@ export default function ScoreboardPage() {
             const step = steps[stepIdx];
             setIsAnimating(true);
             setIsFinished(false);
+            skipAnimRef.current = false;
+            animatingStepRef.current = stepIdx;
 
             if (step.type === 'focus') {
                 // Focus step: highlight the team
@@ -88,50 +133,81 @@ export default function ScoreboardPage() {
                 setDisplayStandings(step.standings);
                 setCurrentStep(stepIdx);
                 setIsAnimating(false);
+                animatingStepRef.current = -1;
             } else if (step.type === 'reveal') {
                 // Reveal step: show the result with animation
                 setFocusedTeamId(step.teamId);
                 setRevealingProblemId(step.problemId || null);
 
-                await new Promise((r) => setTimeout(r, config.revealDuration));
+                await interruptibleDelay(config.revealDuration);
 
                 setDisplayStandings(step.standings);
                 setRevealingProblemId(null);
                 setCurrentStep(stepIdx);
                 setIsAnimating(false);
+                animatingStepRef.current = -1;
             } else if (step.type === 'move') {
-                // Move step: animate the team moving up
+                // Move step: animate the team sliding UP
                 //
-                // Strategy:
-                // 1. Update standings to new order immediately
-                // 2. Apply a positive translateY offset to push the team
-                //    back to its OLD visual position
-                // 3. Animate the offset to 0 so the team slides to its new spot
+                // Strategy: Keep OLD standings, apply negative translateY offset
+                // to slide the team upward, then after animation swap to new standings.
                 const rowsToMove = (step.fromRank ?? 0) - (step.toRank ?? 0);
 
                 setFocusedTeamId(step.teamId);
                 setMovingTeamId(step.teamId);
-                setDisplayStandings(step.standings); // New order
-                setMoveOffset(rowsToMove); // Offset back to old visual position
+                // displayStandings stays as the OLD order so team doesn't jump
+                setMoveOffset(0); // ensure starting from 0
 
-                // Wait a frame for React to render with the offset
-                await new Promise((r) => setTimeout(r, 50));
-                setMoveOffset(0); // Animate to final position
+                if (skipAnimRef.current) {
+                    // Skip immediately
+                    applyStepInstant(stepIdx);
+                    setCurrentStep(stepIdx);
+                    setIsAnimating(false);
+                    animatingStepRef.current = -1;
+                    return;
+                }
 
-                await new Promise((r) => setTimeout(r, config.movementSpeed));
+                // Next frame: start the transition to target
+                await new Promise((r) => setTimeout(r, 30));
 
+                if (skipAnimRef.current) {
+                    applyStepInstant(stepIdx);
+                    setCurrentStep(stepIdx);
+                    setIsAnimating(false);
+                    animatingStepRef.current = -1;
+                    return;
+                }
+
+                setMoveOffset(-rowsToMove); // Animate upward
+
+                await interruptibleDelay(config.movementSpeed);
+
+                // Animation done: swap to new standings and clear animation state
+                setDisplayStandings(step.standings);
                 setMovingTeamId(null);
                 setMoveOffset(0);
                 setCurrentStep(stepIdx);
                 setIsAnimating(false);
+                animatingStepRef.current = -1;
             }
         },
-        [steps, contestData, config.revealDuration, config.movementSpeed, setCurrentStep]
+        [steps, contestData, config.revealDuration, config.movementSpeed, setCurrentStep, interruptibleDelay, applyStepInstant]
     );
+
+    // Skip current animation and apply step instantly
+    const skipCurrentAnimation = useCallback(() => {
+        if (!isAnimating || animatingStepRef.current < 0) return;
+        skipAnimRef.current = true;
+        // The animateStepForward will check the flag and bail out
+    }, [isAnimating]);
 
     // Step forward
     const stepForward = useCallback(() => {
-        if (isAnimating) return;
+        if (isAnimating) {
+            // Skip the current animation
+            skipCurrentAnimation();
+            return;
+        }
         const nextStep = currentStep + 1;
         if (nextStep < steps.length) {
             animateStepForward(nextStep);
@@ -145,7 +221,7 @@ export default function ScoreboardPage() {
             setIsFinished(true);
             setCurrentStep(steps.length);
         }
-    }, [currentStep, steps, isAnimating, isFinished, animateStepForward, setCurrentStep]);
+    }, [currentStep, steps, isAnimating, isFinished, animateStepForward, skipCurrentAnimation, setCurrentStep]);
 
     // Step backward
     const stepBackward = useCallback(() => {
@@ -154,8 +230,7 @@ export default function ScoreboardPage() {
             // Go back from finished state to last step
             const lastStep = steps.length - 1;
             if (lastStep >= 0) {
-                setDisplayStandings(steps[lastStep].standings);
-                setFocusedTeamId(steps[lastStep].teamId);
+                applyStepInstant(lastStep);
                 setCurrentStep(lastStep);
             }
             setIsFinished(false);
@@ -163,14 +238,10 @@ export default function ScoreboardPage() {
         }
         const prevStep = currentStep - 1;
         if (prevStep >= -1) {
-            const standings = getCurrentStandings(prevStep);
-            setDisplayStandings(standings);
+            applyStepInstant(prevStep);
             setCurrentStep(prevStep);
-            setFocusedTeamId(getFocusedTeamId(prevStep));
-            setRevealingProblemId(null);
-            setMovingTeamId(null);
         }
-    }, [currentStep, isAnimating, isFinished, steps, getCurrentStandings, setCurrentStep, getFocusedTeamId]);
+    }, [currentStep, isAnimating, isFinished, steps, applyStepInstant, setCurrentStep]);
 
     // Autoplay logic
     useEffect(() => {
@@ -199,10 +270,13 @@ export default function ScoreboardPage() {
             // Check if we should pause at this rank
             const step = steps[nextStep];
             if (step.type === 'focus') {
-                const teamStanding = displayStandings.find(
+                // Use array POSITION (1-indexed) rather than tied rank.
+                // When all teams are tied (e.g. custom start at 0:00:00),
+                // using rank would cause all teams to have rank 1, breaking autoplay.
+                const teamPosition = displayStandings.findIndex(
                     (s) => s.teamId === step.teamId
-                );
-                if (teamStanding && config.pauseAtRanks.includes(teamStanding.rank)) {
+                ) + 1; // 1-indexed position
+                if (teamPosition > 0 && config.pauseAtRanks.includes(teamPosition)) {
                     setIsPlaying(false);
                     return;
                 }
@@ -231,17 +305,22 @@ export default function ScoreboardPage() {
         setCurrentStep,
     ]);
 
+    // Toggle play/pause
+    const togglePlay = useCallback(() => {
+        setIsPlaying((prev) => !prev);
+    }, []);
+
     // Keyboard controls
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             switch (e.code) {
                 case 'Space':
                     e.preventDefault();
-                    setIsPlaying((prev) => !prev);
+                    togglePlay();
                     break;
                 case 'ArrowRight':
                     e.preventDefault();
-                    if (!isPlaying) stepForward();
+                    stepForward();
                     break;
                 case 'ArrowLeft':
                     e.preventDefault();
@@ -257,10 +336,12 @@ export default function ScoreboardPage() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isPlaying, stepForward, stepBackward, router]);
+    }, [isPlaying, stepForward, stepBackward, togglePlay, router]);
 
     // Click to step forward
-    const handleClick = useCallback(() => {
+    const handleClick = useCallback((e: React.MouseEvent) => {
+        // Don't step forward if clicking on the play/pause button
+        if ((e.target as HTMLElement).closest('.status-badge')) return;
         if (!isPlaying) stepForward();
     }, [isPlaying, stepForward]);
 
@@ -314,11 +395,12 @@ export default function ScoreboardPage() {
             <div className="scoreboard-title-bar">
                 <h1>{contestData.contest.formal_name || contestData.contest.name}</h1>
                 <div className="scoreboard-controls-info">
-                    {isPlaying ? (
-                        <span className="status-badge playing">⏸ Playing</span>
-                    ) : (
-                        <span className="status-badge paused">▶ Paused</span>
-                    )}
+                    <button
+                        className={`status-badge ${isPlaying ? 'playing' : 'paused'}`}
+                        onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+                    >
+                        {isPlaying ? '⏸ Playing' : '▶ Paused'}
+                    </button>
                     <span className="step-counter">{stepDisplay}</span>
                 </div>
             </div>
@@ -349,7 +431,7 @@ export default function ScoreboardPage() {
                         const moveStyle: React.CSSProperties = isMoving
                             ? {
                                 transform: `translateY(${moveOffset * rowHeight}px)`,
-                                transition: moveOffset === 0
+                                transition: moveOffset !== 0
                                     ? `transform ${config.movementSpeed}ms ease-in-out`
                                     : 'none',
                                 zIndex: 10,

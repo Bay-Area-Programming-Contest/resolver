@@ -12,13 +12,15 @@ interface ResolverState {
     frozenStandings: TeamStanding[];
     currentStep: number;
     isReady: boolean;
-    feedText: string | null; // Store raw feed for recomputation
+    feedText: string | null;
+    hasFrozenPeriod: boolean;
 }
 
 interface ResolverContextType extends ResolverState {
     setConfig: (config: ResolverConfig) => void;
     loadFeed: (feedText: string, config: ResolverConfig) => void;
     recomputeWithConfig: (config: ResolverConfig) => void;
+    invalidateFeed: () => void;
     setCurrentStep: (step: number) => void;
     reset: () => void;
 }
@@ -34,6 +36,7 @@ export function ResolverProvider({ children }: { children: React.ReactNode }) {
         currentStep: -1,
         isReady: false,
         feedText: null,
+        hasFrozenPeriod: true,
     });
 
     const setConfig = useCallback((config: ResolverConfig) => {
@@ -42,6 +45,7 @@ export function ResolverProvider({ children }: { children: React.ReactNode }) {
 
     const loadFeed = useCallback((feedText: string, config: ResolverConfig) => {
         const contestData = parseFeed(feedText);
+        const hasFrozenPeriod = !!contestData.contest.scoreboard_freeze_duration;
         const { frozenStandings, steps } = computeResolverSteps(contestData, config);
         setState((prev) => ({
             ...prev,
@@ -52,12 +56,13 @@ export function ResolverProvider({ children }: { children: React.ReactNode }) {
             steps,
             currentStep: -1,
             isReady: true,
+            hasFrozenPeriod,
         }));
     }, []);
 
     const recomputeWithConfig = useCallback((config: ResolverConfig) => {
         setState((prev) => {
-            if (!prev.feedText || !prev.contestData) return prev;
+            if (!prev.feedText) return prev;
             const contestData = parseFeed(prev.feedText);
             const { frozenStandings, steps } = computeResolverSteps(contestData, config);
             return {
@@ -70,6 +75,19 @@ export function ResolverProvider({ children }: { children: React.ReactNode }) {
                 isReady: true,
             };
         });
+    }, []);
+
+    const invalidateFeed = useCallback(() => {
+        setState((prev) => ({
+            ...prev,
+            contestData: null,
+            feedText: null,
+            steps: [],
+            frozenStandings: [],
+            currentStep: -1,
+            isReady: false,
+            hasFrozenPeriod: true,
+        }));
     }, []);
 
     const setCurrentStep = useCallback((step: number) => {
@@ -85,6 +103,7 @@ export function ResolverProvider({ children }: { children: React.ReactNode }) {
             currentStep: -1,
             isReady: false,
             feedText: null,
+            hasFrozenPeriod: true,
         });
     }, []);
 
@@ -95,6 +114,7 @@ export function ResolverProvider({ children }: { children: React.ReactNode }) {
                 setConfig,
                 loadFeed,
                 recomputeWithConfig,
+                invalidateFeed,
                 setCurrentStep,
                 reset,
             }}

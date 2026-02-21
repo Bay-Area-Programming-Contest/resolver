@@ -167,6 +167,17 @@ body {
   font-size: 13px;
 }
 
+.warning-message {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(241, 196, 15, 0.12);
+  border: 1px solid rgba(241, 196, 15, 0.3);
+  border-radius: 8px;
+  color: var(--accent-yellow);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .loading-message {
   margin-top: 12px;
   padding: 10px 14px;
@@ -349,6 +360,15 @@ body {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.5px;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+
+.status-badge:hover {
+  opacity: 0.8;
 }
 
 .status-badge.playing {

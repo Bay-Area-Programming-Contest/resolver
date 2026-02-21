@@ -7,11 +7,14 @@ import { DEFAULT_CONFIG } from '@/lib/types';
 
 export default function ConfigPage() {
   const router = useRouter();
-  const { config, loadFeed, recomputeWithConfig, isReady, contestData, reset } = useResolver();
+  const {
+    config, loadFeed, recomputeWithConfig, invalidateFeed, setConfig,
+    isReady, contestData, reset, currentStep, hasFrozenPeriod,
+  } = useResolver();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [feedLoaded, setFeedLoaded] = useState(false);
+  const [feedLoaded, setFeedLoaded] = useState(isReady);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -20,6 +23,9 @@ export default function ConfigPage() {
   const [autoplayPause, setAutoplayPause] = useState(String(config.autoplayPause));
   const [startTime, setStartTime] = useState(config.startTime || '');
   const [pauseAtRanks, setPauseAtRanks] = useState(config.pauseAtRanks.join(', '));
+
+  // Whether there's a previous resolver session to resume
+  const canResume = isReady && currentStep > -1;
 
   const buildConfig = useCallback(() => ({
     revealDuration: parseInt(revealDuration) || DEFAULT_CONFIG.revealDuration,
@@ -46,13 +52,17 @@ export default function ConfigPage() {
         setFeedLoaded(true);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to parse feed');
+        setFeedLoaded(false);
+        invalidateFeed();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to read file');
+      setFeedLoaded(false);
+      invalidateFeed();
     } finally {
       setLoading(false);
     }
-  }, [buildConfig, loadFeed]);
+  }, [buildConfig, loadFeed, invalidateFeed]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -85,8 +95,15 @@ export default function ConfigPage() {
 
   const handleStart = () => {
     const newConfig = buildConfig();
-    // Recompute steps with the latest config (in case user changed start time, etc.)
-    recomputeWithConfig(newConfig);
+    // Only recompute if startTime changed (it affects the resolver steps).
+    // Otherwise just update animation settings and preserve currentStep.
+    const startTimeChanged = (newConfig.startTime ?? '') !== (config.startTime ?? '');
+    if (startTimeChanged) {
+      recomputeWithConfig(newConfig);
+    } else {
+      // Just update animation/pause settings without recomputing
+      setConfig(newConfig);
+    }
     router.push('/scoreboard');
   };
 
@@ -158,6 +175,12 @@ export default function ConfigPage() {
               <span className="summary-detail">
                 {contestData.teams.length} teams · {contestData.problems.length} problems
               </span>
+            </div>
+          )}
+          {feedLoaded && contestData && !hasFrozenPeriod && (
+            <div className="warning-message">
+              ⚠ This contest feed has no frozen scoreboard period.
+              Set a custom start time below to define which submissions to reveal.
             </div>
           )}
         </section>
@@ -245,7 +268,7 @@ export default function ConfigPage() {
             onClick={handleStart}
             disabled={!isReady}
           >
-            Start Resolver
+            {canResume ? 'Resume Resolver' : 'Start Resolver'}
           </button>
           {isReady && (
             <button className="btn-reset" onClick={handleReset}>
