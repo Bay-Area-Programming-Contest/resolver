@@ -460,12 +460,18 @@ body {
   text-align: center;
 }
 
-/* Scoreboard Body */
-.scoreboard-body {
+/* Scoreboard Viewport — overflow-hidden container */
+.scoreboard-viewport {
   flex: 1;
   overflow: hidden;
+  position: relative;
+}
+
+/* Scoreboard Body — translated for smooth scrolling */
+.scoreboard-body {
   display: flex;
   flex-direction: column;
+  will-change: transform;
 }
 
 /* Scoreboard Row */

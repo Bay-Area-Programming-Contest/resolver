@@ -1,11 +1,15 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useResolver } from '../ResolverContext';
 import { TeamStanding } from '@/lib/types';
 import ScoreboardHeader from './ScoreboardHeader';
 import ScoreboardRow from './ScoreboardRow';
+
+const FALLBACK_ROW_HEIGHT = 48; // used only before DOM measurement
+const HEADER_HEIGHT = 56;
+const SCROLL_DURATION = 400; // ms for viewport scrolling
 
 export default function ScoreboardPage() {
     const router = useRouter();
@@ -25,19 +29,28 @@ export default function ScoreboardPage() {
     const [focusedTeamId, setFocusedTeamId] = useState<string | null>(null);
     const [displayStandings, setDisplayStandings] = useState<TeamStanding[]>([]);
     const [movingTeamId, setMovingTeamId] = useState<string | null>(null);
-    const [moveOffset, setMoveOffset] = useState(0);
+    const [movePixels, setMovePixels] = useState(0);
     const [isFinished, setIsFinished] = useState(false);
-    // Locked viewport start index during move animations
-    const [lockedStartIdx, setLockedStartIdx] = useState<number | null>(null);
-    // Locked focused index during move animations (for grey-out)
+
+    // Displaced teams (pushed down one row during a move animation)
+    const [displacedTeamIds, setDisplacedTeamIds] = useState<Set<string>>(new Set());
+    const [displacedOffset, setDisplacedOffset] = useState(0);
+
+    // Smooth viewport scrolling: pixel offset for the scoreboard-body inner wrapper
+    const [scrollY, setScrollY] = useState(0);
+    const [scrollTransition, setScrollTransition] = useState(false);
+
+    // Locked values during move animations
     const [lockedFocusedIdx, setLockedFocusedIdx] = useState<number | null>(null);
+
     const autoplayTimer = useRef<NodeJS.Timeout | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-
-    // Ref used to signal an animation should be skipped
+    const bodyRef = useRef<HTMLDivElement>(null);
     const skipAnimRef = useRef(false);
-    // Ref tracking which step is currently animating
     const animatingStepRef = useRef(-1);
+
+    // Dynamically measured row height
+    const [rowHeight, setRowHeight] = useState(FALLBACK_ROW_HEIGHT);
 
     // Redirect if no data
     useEffect(() => {
@@ -46,51 +59,102 @@ export default function ScoreboardPage() {
         }
     }, [isReady, contestData, router]);
 
+    // Measure actual row-to-row stride from DOM after first render.
+    // We measure the distance between the tops of two adjacent rows,
+    // which captures height + border exactly.
+    useEffect(() => {
+        const measure = () => {
+            if (bodyRef.current) {
+                const rows = bodyRef.current.querySelectorAll('.scoreboard-row');
+                if (rows.length >= 2) {
+                    const top0 = rows[0].getBoundingClientRect().top;
+                    const top1 = rows[1].getBoundingClientRect().top;
+                    const stride = top1 - top0;
+                    if (stride > 0) {
+                        setRowHeight(stride);
+                    }
+                } else if (rows.length === 1) {
+                    const h = rows[0].getBoundingClientRect().height;
+                    if (h > 0) setRowHeight(h);
+                }
+            }
+        };
+        const timer = setTimeout(measure, 100);
+        return () => clearTimeout(timer);
+    }, [displayStandings]);
+
+    // Compute visible count from window height
+    const visibleCount = useMemo(() => {
+        const h = typeof window !== 'undefined' ? window.innerHeight - HEADER_HEIGHT : 800;
+        return Math.floor(h / rowHeight);
+    }, [rowHeight]);
+
+    // Compute the ideal scroll target (pixel offset) for a given focused team
+    const computeScrollTarget = useCallback((standings: TeamStanding[], focused: string | null) => {
+        if (!focused) return 0;
+        const focusIdx = standings.findIndex((s) => s.teamId === focused);
+        if (focusIdx < 0) return 0;
+        const targetPosition = visibleCount - 2; // show focus near bottom
+        let startIdx = Math.max(0, focusIdx - targetPosition);
+        startIdx = Math.min(startIdx, Math.max(0, standings.length - visibleCount));
+        return startIdx * rowHeight;
+    }, [visibleCount, rowHeight]);
+
     // Initialize display standings from current step (handles resume after exit)
     useEffect(() => {
         if (frozenStandings.length > 0 && displayStandings.length === 0) {
             if (currentStep >= 0 && currentStep < steps.length) {
                 setDisplayStandings(steps[currentStep].standings);
                 setFocusedTeamId(steps[currentStep].teamId);
+                setScrollY(computeScrollTarget(steps[currentStep].standings, steps[currentStep].teamId));
             } else if (currentStep >= steps.length && steps.length > 0) {
                 setDisplayStandings(steps[steps.length - 1].standings);
                 setIsFinished(true);
+                setScrollY(0);
             } else {
                 setDisplayStandings(frozenStandings);
+                setScrollY(0);
             }
         }
-    }, [frozenStandings, displayStandings.length, currentStep, steps]);
+    }, [frozenStandings, displayStandings.length, currentStep, steps, computeScrollTarget]);
 
-    // Get current standings based on step
-    const getCurrentStandings = useCallback(
-        (stepIndex: number): TeamStanding[] => {
-            if (stepIndex < 0 || steps.length === 0) return frozenStandings;
-            if (stepIndex >= steps.length) return steps[steps.length - 1].standings;
-            return steps[stepIndex].standings;
-        },
-        [frozenStandings, steps]
-    );
+    // Smoothly scroll to a target position
+    const smoothScrollTo = useCallback((targetY: number) => {
+        setScrollTransition(true);
+        setScrollY(targetY);
+        // Transition is applied via CSS; the duration is SCROLL_DURATION
+    }, []);
+
+    // Instantly jump scroll (no transition)
+    const jumpScrollTo = useCallback((targetY: number) => {
+        setScrollTransition(false);
+        setScrollY(targetY);
+    }, []);
 
     // Apply step result instantly (used for skip and step backward)
     const applyStepInstant = useCallback((stepIdx: number) => {
         if (stepIdx < 0) {
             setDisplayStandings(frozenStandings);
             setFocusedTeamId(null);
+            jumpScrollTo(0);
         } else if (stepIdx < steps.length) {
             setDisplayStandings(steps[stepIdx].standings);
             setFocusedTeamId(steps[stepIdx].teamId);
+            jumpScrollTo(computeScrollTarget(steps[stepIdx].standings, steps[stepIdx].teamId));
         } else if (steps.length > 0) {
             setDisplayStandings(steps[steps.length - 1].standings);
             setFocusedTeamId(null);
+            jumpScrollTo(0);
         }
         setRevealingProblemId(null);
         setMovingTeamId(null);
-        setMoveOffset(0);
-        setLockedStartIdx(null);
+        setMovePixels(0);
+        setDisplacedTeamIds(new Set());
+        setDisplacedOffset(0);
         setLockedFocusedIdx(null);
-    }, [frozenStandings, steps]);
+    }, [frozenStandings, steps, computeScrollTarget, jumpScrollTo]);
 
-    // Helper: interruptible delay — resolves immediately if skipAnimRef is set
+    // Helper: interruptible delay
     const interruptibleDelay = useCallback((ms: number) => {
         return new Promise<void>((resolve) => {
             if (skipAnimRef.current) { resolve(); return; }
@@ -105,26 +169,6 @@ export default function ScoreboardPage() {
         });
     }, []);
 
-    // Compute viewport parameters (extracted so we can lock them)
-    const rowHeight = 48;
-    const headerHeight = 56;
-    const containerHeight =
-        typeof window !== 'undefined' ? window.innerHeight - headerHeight : 800;
-    const visibleCount = Math.floor(containerHeight / rowHeight);
-
-    const computeStartIdx = useCallback((standings: TeamStanding[], focused: string | null) => {
-        const focusIdx = focused
-            ? standings.findIndex((s) => s.teamId === focused)
-            : -1;
-        let idx = 0;
-        if (focusIdx >= 0) {
-            const targetPosition = visibleCount - 2;
-            idx = Math.max(0, focusIdx - targetPosition);
-            idx = Math.min(idx, Math.max(0, standings.length - visibleCount));
-        }
-        return idx;
-    }, [visibleCount]);
-
     // Animate a step forward
     const animateStepForward = useCallback(
         async (stepIdx: number) => {
@@ -137,12 +181,16 @@ export default function ScoreboardPage() {
             animatingStepRef.current = stepIdx;
 
             if (step.type === 'focus') {
-                // Clear any viewport/grey-out locks from a preceding move step
-                setLockedStartIdx(null);
+                // Clear locks from previous move
                 setLockedFocusedIdx(null);
                 setFocusedTeamId(step.teamId);
                 setDisplayStandings(step.standings);
                 setCurrentStep(stepIdx);
+
+                // Smooth scroll to show this team
+                const target = computeScrollTarget(step.standings, step.teamId);
+                smoothScrollTo(target);
+
                 setIsAnimating(false);
                 animatingStepRef.current = -1;
             } else if (step.type === 'reveal') {
@@ -157,33 +205,49 @@ export default function ScoreboardPage() {
                 setIsAnimating(false);
                 animatingStepRef.current = -1;
             } else if (step.type === 'move') {
-                // MOVE ANIMATION STRATEGY:
+                // MOVE ANIMATION:
                 //
-                // The resolver now keeps reveal steps in the OLD array order
-                // (only updating scores in-place). So displayStandings already
-                // has the team at its old position with updated scores.
+                // displayStandings is in OLD order (team at fromIdx).
+                // step.standings has NEW sorted order (team at toIdx).
                 //
-                // We just need to:
-                // 1. Lock the viewport and grey-out so nothing shifts during animation
-                // 2. Animate the team sliding UP via translateY
-                // 3. After animation, swap to the move step's standings (re-sorted)
-                //
-                // fromRank and toRank are 0-indexed array indices.
+                // 1. Lock grey-out at current position
+                // 2. Identify displaced teams (between toIdx and fromIdx-1)
+                // 3. Animate: moving team slides UP, displaced teams slide DOWN
+                // 4. After animation, swap to new standings
 
                 const fromIdx = step.fromRank ?? 0;
                 const toIdx = step.toRank ?? 0;
-                const rowsToMove = fromIdx - toIdx; // positive = moving up
 
-                // Lock viewport and grey-out at current state
+                // Measure actual pixel distance from DOM rather than assuming
+                // uniform row heights. This handles focused-row styling differences.
+                let movePixels = (fromIdx - toIdx) * rowHeight; // fallback
+                if (bodyRef.current) {
+                    const rows = bodyRef.current.querySelectorAll('.scoreboard-row');
+                    if (rows[fromIdx] && rows[toIdx]) {
+                        const fromTop = rows[fromIdx].getBoundingClientRect().top;
+                        const toTop = rows[toIdx].getBoundingClientRect().top;
+                        movePixels = fromTop - toTop;
+                    }
+                }
+
+                // Lock grey-out
                 const currentFocusIdx = displayStandings.findIndex(s => s.teamId === step.teamId);
-                const currentSIdx = computeStartIdx(displayStandings, step.teamId);
-                setLockedStartIdx(currentSIdx);
                 setLockedFocusedIdx(currentFocusIdx);
 
-                // displayStandings already has old order — just set animation state
+                // Identify displaced teams: those at indices [toIdx, fromIdx) in OLD order.
+                // They each get pushed down by one row.
+                const displaced = new Set<string>();
+                for (let i = toIdx; i < fromIdx; i++) {
+                    if (i < displayStandings.length && displayStandings[i].teamId !== step.teamId) {
+                        displaced.add(displayStandings[i].teamId);
+                    }
+                }
+
                 setFocusedTeamId(step.teamId);
                 setMovingTeamId(step.teamId);
-                setMoveOffset(0);
+                setMovePixels(0);
+                setDisplacedTeamIds(displaced);
+                setDisplacedOffset(0);
 
                 if (skipAnimRef.current) {
                     applyStepInstant(stepIdx);
@@ -204,28 +268,34 @@ export default function ScoreboardPage() {
                     return;
                 }
 
-                // Animate: slide team UP by rowsToMove positions
-                setMoveOffset(-rowsToMove);
+                // Animate: team slides UP by measured pixel distance,
+                // displaced teams slide DOWN by one row
+                setMovePixels(-movePixels);
+                setDisplacedOffset(1);
 
-                await interruptibleDelay(config.movementSpeed);
+                // Wait for CSS transition to complete. Add buffer because
+                // the transition starts after React renders (~30ms after we
+                // set the offset), but the timer starts immediately.
+                await interruptibleDelay(config.movementSpeed + 50);
 
-                // Animation done: swap to final standings (re-sorted).
-                // Keep viewport/grey-out LOCKED — they'll be cleared by the
-                // next focus step, preventing a brief viewport jump to the
-                // moved team's new position.
+                // Animation done: swap to final standings
+                // Keep grey-out locked until next focus step
                 setDisplayStandings(step.standings);
                 setMovingTeamId(null);
-                setMoveOffset(0);
+                setMovePixels(0);
+                setDisplacedTeamIds(new Set());
+                setDisplacedOffset(0);
                 setCurrentStep(stepIdx);
                 setIsAnimating(false);
                 animatingStepRef.current = -1;
             }
         },
         [steps, contestData, config.revealDuration, config.movementSpeed,
-            setCurrentStep, interruptibleDelay, applyStepInstant, displayStandings, computeStartIdx]
+            setCurrentStep, interruptibleDelay, applyStepInstant,
+            displayStandings, computeScrollTarget, smoothScrollTo]
     );
 
-    // Skip current animation and apply step instantly
+    // Skip current animation
     const skipCurrentAnimation = useCallback(() => {
         if (!isAnimating || animatingStepRef.current < 0) return;
         skipAnimRef.current = true;
@@ -246,12 +316,13 @@ export default function ScoreboardPage() {
             }
             setFocusedTeamId(null);
             setRevealingProblemId(null);
-            setLockedStartIdx(null);
             setLockedFocusedIdx(null);
             setIsFinished(true);
             setCurrentStep(steps.length);
+            smoothScrollTo(0);
         }
-    }, [currentStep, steps, isAnimating, isFinished, animateStepForward, skipCurrentAnimation, setCurrentStep]);
+    }, [currentStep, steps, isAnimating, isFinished, animateStepForward,
+        skipCurrentAnimation, setCurrentStep, smoothScrollTo]);
 
     // Step backward
     const stepBackward = useCallback(() => {
@@ -288,9 +359,11 @@ export default function ScoreboardPage() {
                 }
                 setFocusedTeamId(null);
                 setRevealingProblemId(null);
+                setLockedFocusedIdx(null);
                 setIsFinished(true);
                 setCurrentStep(steps.length);
                 setIsPlaying(false);
+                smoothScrollTo(0);
                 return;
             }
 
@@ -319,7 +392,8 @@ export default function ScoreboardPage() {
         };
     }, [
         isPlaying, isAnimating, currentStep, steps, displayStandings,
-        config.pauseAtRanks, config.autoplayPause, animateStepForward, setCurrentStep,
+        config.pauseAtRanks, config.autoplayPause, animateStepForward,
+        setCurrentStep, smoothScrollTo,
     ]);
 
     // Toggle play/pause
@@ -369,27 +443,13 @@ export default function ScoreboardPage() {
         );
     }
 
-    // Compute focused index
+    // Focused index (for grey-out)
     const focusedIndex = focusedTeamId
         ? displayStandings.findIndex((s) => s.teamId === focusedTeamId)
         : -1;
-
-    // Use locked values during move animation, otherwise compute dynamically
     const effectiveFocusedIdx = lockedFocusedIdx !== null ? lockedFocusedIdx : focusedIndex;
 
-    let startIdx = 0;
-    if (lockedStartIdx !== null) {
-        startIdx = lockedStartIdx;
-    } else {
-        startIdx = computeStartIdx(displayStandings, focusedTeamId);
-    }
-
-    const visibleStandings = displayStandings.slice(
-        startIdx,
-        startIdx + visibleCount
-    );
-
-    // Build a team name lookup
+    // Build team name lookup
     const teamNames = new Map<string, string>();
     for (const team of contestData.teams) {
         teamNames.set(team.id, team.display_name || team.name);
@@ -399,6 +459,9 @@ export default function ScoreboardPage() {
     const stepDisplay = isFinished
         ? `Finished — ${steps.length} steps`
         : `Step ${Math.max(0, currentStep + 1)} / ${steps.length}`;
+
+    // Viewport height for the overflow container
+    const viewportHeight = visibleCount * rowHeight;
 
     return (
         <div className="scoreboard-page" onClick={handleClick} ref={containerRef}>
@@ -419,53 +482,74 @@ export default function ScoreboardPage() {
             {/* Scoreboard */}
             <div className="scoreboard-container">
                 <ScoreboardHeader problems={contestData.problems} />
-                <div className="scoreboard-body">
-                    {visibleStandings.map((standing, idx) => {
-                        const globalIdx = startIdx + idx;
-                        const isFocused = standing.teamId === focusedTeamId;
-                        // Grey out teams below the focused team.
-                        // Use locked focused index during move animations.
-                        const isGreyedOut =
-                            !isFinished &&
-                            effectiveFocusedIdx >= 0 &&
-                            globalIdx > effectiveFocusedIdx &&
-                            !movingTeamId;
-                        const isMoving = standing.teamId === movingTeamId;
+                <div
+                    className="scoreboard-viewport"
+                    style={{ height: viewportHeight, overflow: 'hidden' }}
+                >
+                    <div
+                        ref={bodyRef}
+                        className="scoreboard-body"
+                        style={{
+                            transform: `translateY(${-scrollY}px)`,
+                            transition: scrollTransition
+                                ? `transform ${SCROLL_DURATION}ms ease-in-out`
+                                : 'none',
+                        }}
+                    >
+                        {displayStandings.map((standing, idx) => {
+                            const isFocused = standing.teamId === focusedTeamId;
+                            const isGreyedOut =
+                                !isFinished &&
+                                effectiveFocusedIdx >= 0 &&
+                                idx > effectiveFocusedIdx &&
+                                !movingTeamId;
+                            const isMoving = standing.teamId === movingTeamId;
+                            const isDisplaced = displacedTeamIds.has(standing.teamId);
 
-                        const team = contestData.teams.find(
-                            (t) => t.id === standing.teamId
-                        );
-                        const org = team?.organization_id
-                            ? contestData.organizations.get(team.organization_id)
-                            : undefined;
+                            const team = contestData.teams.find(
+                                (t) => t.id === standing.teamId
+                            );
+                            const org = team?.organization_id
+                                ? contestData.organizations.get(team.organization_id)
+                                : undefined;
 
-                        const moveStyle: React.CSSProperties = isMoving
-                            ? {
-                                transform: `translateY(${moveOffset * rowHeight}px)`,
-                                transition: moveOffset !== 0
-                                    ? `transform ${config.movementSpeed}ms ease-in-out`
-                                    : 'none',
-                                zIndex: 10,
-                                position: 'relative',
+                            let rowStyle: React.CSSProperties = {};
+                            if (isMoving) {
+                                rowStyle = {
+                                    transform: `translateY(${movePixels}px)`,
+                                    transition: movePixels !== 0
+                                        ? `transform ${config.movementSpeed}ms ease-in-out`
+                                        : 'none',
+                                    zIndex: 10,
+                                    position: 'relative',
+                                };
+                            } else if (isDisplaced) {
+                                rowStyle = {
+                                    transform: `translateY(${displacedOffset * rowHeight}px)`,
+                                    transition: displacedOffset !== 0
+                                        ? `transform ${config.movementSpeed}ms ease-in-out`
+                                        : 'none',
+                                    position: 'relative',
+                                };
                             }
-                            : {};
 
-                        return (
-                            <ScoreboardRow
-                                key={standing.teamId}
-                                standing={standing}
-                                teamName={teamNames.get(standing.teamId) || 'Unknown'}
-                                organization={org}
-                                problems={contestData.problems}
-                                isFocused={isFocused}
-                                isGreyedOut={isGreyedOut}
-                                revealingProblemId={
-                                    isFocused ? revealingProblemId : null
-                                }
-                                style={moveStyle}
-                            />
-                        );
-                    })}
+                            return (
+                                <ScoreboardRow
+                                    key={standing.teamId}
+                                    standing={standing}
+                                    teamName={teamNames.get(standing.teamId) || 'Unknown'}
+                                    organization={org}
+                                    problems={contestData.problems}
+                                    isFocused={isFocused}
+                                    isGreyedOut={isGreyedOut}
+                                    revealingProblemId={
+                                        isFocused ? revealingProblemId : null
+                                    }
+                                    style={rowStyle}
+                                />
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
