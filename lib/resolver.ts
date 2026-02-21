@@ -270,6 +270,10 @@ export function computeResolverSteps(
     // Now, generate resolver steps
     const steps: ResolverStep[] = [];
     let currentStandings = cloneStandings(frozenStandings);
+    // displayOrder tracks the array order for step standings.
+    // Reveal steps keep this order (only update scores in-place).
+    // Move steps re-sort to the new order.
+    let displayOrder = cloneStandings(frozenStandings);
 
     // Build a map of pending submissions per team per problem
     // Sorted by contest_time
@@ -300,12 +304,29 @@ export function computeResolverSteps(
     // Track which submissions have been revealed
     const revealedSubmissions = new Set<string>();
 
+    /**
+     * Update displayOrder in-place: copy the team's latest score and problem
+     * results from `currentStandings` (which is properly sorted/scored) into
+     * `displayOrder` (which preserves the visual array order).
+     */
+    function syncDisplayOrder() {
+        for (let i = 0; i < displayOrder.length; i++) {
+            const updated = currentStandings.find(
+                (s) => s.teamId === displayOrder[i].teamId
+            );
+            if (updated) {
+                displayOrder[i] = { ...updated };
+            }
+        }
+    }
+
     // Process from lowest rank to highest
     // We walk through teams starting from the bottom of the standings
-    let teamIndex = currentStandings.length - 1;
+    // teamIndex is the position in displayOrder
+    let teamIndex = displayOrder.length - 1;
 
     while (teamIndex >= 0) {
-        const teamStanding = currentStandings[teamIndex];
+        const teamStanding = displayOrder[teamIndex];
         const teamId = teamStanding.teamId;
 
         // Check if this team has any pending problems
@@ -339,7 +360,7 @@ export function computeResolverSteps(
         steps.push({
             type: 'focus',
             teamId,
-            standings: cloneStandings(currentStandings),
+            standings: cloneStandings(displayOrder),
         });
 
         // Reveal pending problems for this team, left to right (by problem ordinal)
@@ -365,7 +386,7 @@ export function computeResolverSteps(
                 revealedSubmissions.add(sub.id);
             }
 
-            // Recompute current standings with newly revealed submissions
+            // Recompute fully-sorted standings with newly revealed submissions
             const newPending = new Set(pendingSubmissionIds);
             for (const revId of revealedSubmissions) {
                 newPending.delete(revId);
@@ -378,32 +399,35 @@ export function computeResolverSteps(
                 newPending
             );
 
+            // Update displayOrder scores in-place (keeping old array order)
+            syncDisplayOrder();
+
             // Find the new result for this team+problem
-            const newTeamStanding = currentStandings.find(
+            const newTeamStanding = displayOrder.find(
                 (s) => s.teamId === teamId
             )!;
             const newResult = newTeamStanding.problems.find(
                 (p) => p.problemId === prob.id
             )!;
 
-            // Create a reveal step
+            // Create a reveal step with OLD array order but UPDATED scores
             steps.push({
                 type: 'reveal',
                 teamId,
                 problemId: prob.id,
                 revealedResult: { ...newResult },
                 previousResult: prevResult,
-                standings: cloneStandings(currentStandings),
+                standings: cloneStandings(displayOrder),
             });
 
-            // Check if rank changed
-            const oldRank = teamIndex + 1; // Approximate — use position in array
+            // Check if rank changed (compare position in sorted vs display)
             const newTeamIndex = currentStandings.findIndex(
                 (s) => s.teamId === teamId
             );
 
             if (newTeamIndex < teamIndex) {
-                // Team moved up — create a move step
+                // Team moved up — create a move step with the NEW sorted order
+                // fromRank/toRank are 0-indexed positions in the display array
                 steps.push({
                     type: 'move',
                     teamId,
@@ -411,6 +435,10 @@ export function computeResolverSteps(
                     toRank: newTeamIndex,
                     standings: cloneStandings(currentStandings),
                 });
+
+                // Now sync displayOrder to the new sorted order
+                displayOrder = cloneStandings(currentStandings);
+
                 rankChanged = true;
                 // Don't decrement teamIndex — process the same position again
                 // (a new team is now at this index)
