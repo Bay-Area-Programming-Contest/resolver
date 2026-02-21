@@ -133,8 +133,7 @@ export default function ConfigPage() {
         {/* Contest Data Section */}
         <section className="config-section">
           <h2>
-            <span className="section-icon">📁</span>
-            Contest Data
+            Event Feed
           </h2>
           <div
             className={`file-upload-area${isDragOver ? ' drag-over' : ''}`}
@@ -153,16 +152,9 @@ export default function ConfigPage() {
             />
             <label htmlFor="feed-file" className="file-label">
               {fileName ? (
-                <>
-                  <span className="file-icon">✓</span>
-                  <span>{fileName}</span>
-                </>
+                <span>{fileName}</span>
               ) : (
-                <>
-                  <span className="file-icon">⬆</span>
-                  <span>Choose or drop event feed file</span>
-                  <span className="file-hint">CCS 2022-07 NDJSON format</span>
-                </>
+                <span>Choose or drop event feed file</span>
               )}
             </label>
           </div>
@@ -188,7 +180,6 @@ export default function ConfigPage() {
         {/* Animation Settings */}
         <section className="config-section">
           <h2>
-            <span className="section-icon">⚡</span>
             Animation Settings
           </h2>
           <div className="settings-grid">
@@ -234,7 +225,6 @@ export default function ConfigPage() {
         {/* Breakpoint Settings */}
         <section className="config-section">
           <h2>
-            <span className="section-icon">⏸</span>
             Breakpoint Settings
           </h2>
           <div className="settings-grid">
@@ -276,7 +266,7 @@ export default function ConfigPage() {
             </button>
           )}
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }
